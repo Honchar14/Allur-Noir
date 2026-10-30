@@ -2048,5 +2048,68 @@ $('#replay').addEventListener('click', () => { const v = $('#vid'); v.pause(); v
   if (!location.hash.includes('noplay')) start();
 })();
 </script>
+
+<style>
+  /* ---------- reticle cursor (archer's sight) — fine pointers only ---------- */
+  #cur { display:none; }
+  @media (hover:hover) and (pointer:fine){
+    html, body, body * { cursor:none !important; }
+    #cur { display:block; position:fixed; left:0; top:0; z-index:2147483000; pointer-events:none; opacity:0; transition:opacity .35s ease; --c:#0a0a0a; }
+    #cur.light { --c:#f2f0ec; }
+    #cur.vis { opacity:1; }
+    #cur .dot, #cur .ring { position:fixed; left:0; top:0; will-change:transform; }
+    #cur .dot i { position:absolute; left:-2.5px; top:-2.5px; width:5px; height:5px; border-radius:50%; background:var(--c); transition:transform .35s cubic-bezier(.22,1,.36,1), background-color .3s ease; }
+    #cur .ring i.r { position:absolute; left:-15px; top:-15px; width:30px; height:30px; border-radius:50%; border:1px solid var(--c); opacity:.7;
+      transition:transform .45s cubic-bezier(.22,1,.36,1), border-color .3s ease, opacity .3s ease; }
+    #cur .ring .sp { position:absolute; left:0; top:0; transition:transform .55s cubic-bezier(.22,1,.36,1); }
+    #cur .ring .tk { position:absolute; background:var(--c); transition:transform .45s cubic-bezier(.22,1,.36,1), opacity .3s ease, background-color .3s ease; }
+    #cur .ring .tk.n { left:-.5px; top:-19px; width:1px; height:6px; }
+    #cur .ring .tk.s { left:-.5px; top:13px;  width:1px; height:6px; }
+    #cur .ring .tk.w { left:-19px; top:-.5px; width:6px; height:1px; }
+    #cur .ring .tk.e { left:13px;  top:-.5px; width:6px; height:1px; }
+    /* lock-on over anything clickable: the sight tightens and turns 45deg */
+    #cur.lock .ring i.r { transform:scale(.47); opacity:1; }
+    #cur.lock .ring .sp { transform:rotate(45deg); }
+    #cur.lock .ring .tk { opacity:0; }
+    #cur.lock .ring .tk.n { transform:translateY(8px); } #cur.lock .ring .tk.s { transform:translateY(-8px); }
+    #cur.lock .ring .tk.w { transform:translateX(8px); } #cur.lock .ring .tk.e { transform:translateX(-8px); }
+    #cur.lock .dot i { transform:scale(.7); }
+    #cur.press .ring i.r { transform:scale(.5); transition-duration:.12s; }
+    #cur.press .dot i { transform:scale(1.5); transition-duration:.12s; }
+  }
+</style>
+<div id="cur" aria-hidden="true"><div class="ring"><i class="r"></i><span class="sp"><i class="tk n"></i><i class="tk s"></i><i class="tk w"></i><i class="tk e"></i></span></div><div class="dot"><i></i></div></div>
+<script>
+(function(){
+  if (!matchMedia('(hover:hover) and (pointer:fine)').matches) return;
+  const cur = document.getElementById('cur'), ring = cur.querySelector('.ring'), dot = cur.querySelector('.dot');
+  let mx = -100, my = -100, rx = -100, ry = -100, last = performance.now(), seen = false;
+  const HOT = 'a, button, [role="button"], #reserve, #nav a, label, input, select, textarea';
+  addEventListener('pointermove', e => {
+    mx = e.clientX; my = e.clientY;
+    if (!seen){ rx = mx; ry = my; seen = true; }
+    cur.classList.add('vis'); probe();
+  }, { passive:true });
+  // what is under the sight: clickable -> lock; dark surface -> light ink
+  const DARK = '#pre, #media, #small, #reserve:hover, #replay';
+  function probe(){
+    const el = document.elementFromPoint(mx, my); if (!el) return;
+    cur.classList.toggle('lock', !!el.closest(HOT));
+    cur.classList.toggle('light', !!el.closest(DARK) && !(el.closest('#replay')));
+  }
+  setInterval(() => { if (seen) probe(); }, 120);
+  document.addEventListener('pointerleave', () => cur.classList.remove('vis'));
+  document.documentElement.addEventListener('mouseleave', () => cur.classList.remove('vis'));
+  addEventListener('pointerdown', () => cur.classList.add('press'));
+  addEventListener('pointerup', () => cur.classList.remove('press'));
+  (function loop(now){
+    const k = 1 - Math.pow(1 - .2, (now - last) / 16.67); last = now;   // frame-rate independent follow
+    rx += (mx - rx) * k; ry += (my - ry) * k;
+    dot.style.transform = `translate(${mx}px, ${my}px)`;
+    ring.style.transform = `translate(${rx.toFixed(2)}px, ${ry.toFixed(2)}px)`;
+    requestAnimationFrame(loop);
+  })(last);
+})();
+</script>
 </body>
 </html>
