@@ -2050,5 +2050,54 @@ $('#replay').addEventListener('click', () => { const v = $('#vid'); v.pause(); v
 </script>
 
 
+<style>
+  /* ---------- cursor: dot + trailing ring; over links the ring fills with a noir negative ---------- */
+  #cur { display:none; }
+  @media (hover:hover) and (pointer:fine){
+    html, body, body * { cursor:none !important; }
+    #cur { display:block; position:fixed; left:0; top:0; z-index:2147483000; pointer-events:none; opacity:0; transition:opacity .35s ease; --c:#0a0a0a; }
+    #cur.vis { opacity:1; }
+    #cur.light { --c:#f2f0ec; }
+    #cur .p { position:fixed; left:0; top:0; will-change:transform; }
+    #cur .p > i { position:absolute; display:block; border-radius:50%; transition:transform .55s cubic-bezier(.22,1,.36,1), opacity .4s ease, background-color .3s ease, border-color .3s ease; }
+    #cur .dot { left:-2.5px; top:-2.5px; width:5px; height:5px; background:var(--c); }
+    #cur .ring { left:-16px; top:-16px; width:32px; height:32px; border:1px solid var(--c); opacity:.55; }
+    #cur .lens { left:-24px; top:-24px; width:48px; height:48px; transform:scale(.6); opacity:0;
+      -webkit-backdrop-filter:grayscale(1) invert(1) contrast(1.05); backdrop-filter:grayscale(1) invert(1) contrast(1.05); }
+    #cur.lock .ring { transform:scale(1.5); opacity:0; }
+    #cur.lock .lens { transform:scale(1); opacity:1; }
+    #cur.lock .dot { transform:scale(0); }
+    #cur.press .lens { transform:scale(.86); transition-duration:.15s; }
+  }
+</style>
+<div id="cur" aria-hidden="true"><div class="p s"><i class="lens"></i><i class="ring"></i></div><div class="p f"><i class="dot"></i></div></div>
+<script>
+(function(){
+  if (!matchMedia('(hover:hover) and (pointer:fine)').matches) return;
+  const cur = document.getElementById('cur'), F = cur.querySelector('.f'), S = cur.querySelector('.s');
+  let mx = -300, my = -300, fx = -300, fy = -300, sx = -300, sy = -300, last = performance.now(), seen = false;
+  const HOT = 'a, button, [role="button"], #reserve, #nav a, label, input, select, textarea';
+  const DARK = '#pre, #media, #small, #reserve:hover';
+  function probe(){
+    const el = document.elementFromPoint(mx, my); if (!el) return;
+    cur.classList.toggle('lock', !!el.closest(HOT));
+    cur.classList.toggle('light', !el.closest('#replay') && !!el.closest(DARK));
+  }
+  addEventListener('pointermove', e => { mx = e.clientX; my = e.clientY; if (!seen){ fx = sx = mx; fy = sy = my; seen = true; } cur.classList.add('vis'); probe(); }, { passive:true });
+  document.documentElement.addEventListener('mouseleave', () => cur.classList.remove('vis'));
+  addEventListener('pointerdown', () => cur.classList.add('press'));
+  addEventListener('pointerup', () => cur.classList.remove('press'));
+  setInterval(() => { if (seen) probe(); }, 120);
+  (function loop(now){
+    const dt = Math.min(48, now - last) || 16; last = now;
+    const k = r => 1 - Math.pow(1 - r, dt / 16.67);
+    fx += (mx - fx) * k(.45); fy += (my - fy) * k(.45);
+    sx += (mx - sx) * k(.16); sy += (my - sy) * k(.16);
+    F.style.transform = `translate(${fx.toFixed(2)}px, ${fy.toFixed(2)}px)`;
+    S.style.transform = `translate(${sx.toFixed(2)}px, ${sy.toFixed(2)}px)`;
+    requestAnimationFrame(loop);
+  })(last);
+})();
+</script>
 </body>
 </html>
